@@ -1,6 +1,6 @@
-# vircadia-domain-server-docker
+# enverse-domain-server-docker
 
-Docker version of Vircadia domain-server built with vircadia-builder.
+Docker version of Vircadia domain-server built with Enverse-builder.
 
 This repository includes files to build the Docker image (build*.sh)
 and run the Docker image (*-domain-server.sh).
@@ -8,13 +8,13 @@ and run the Docker image (*-domain-server.sh).
 The Dockerfile is broken into two halves to make building and
 debugging a little easier. `buildBase.sh` builds an image that
 contains all the required libraries and package (Qt, ...).
-`buildDS.sh` uses the base image to pull the Vircadia sources
-and just build Vircadia.
+`buildDS.sh` uses the base image to pull the Enverse sources
+and just build Enverse.
 This makes testing quicker as a new domain-server image build
 doesn't include all the library builds.
 So, you can build the base only once for each version of Qt and
 supporting libraries and then `buildDS` when you want to
-rebuild with a new version of Vircadia.
+rebuild with a new version of Enverse.
 
 The build argument `TAG` specifies the GIT pull tag. This defaults
 to `master`.
@@ -51,7 +51,7 @@ directory `server-logs` with sub-directories for the grids
 and instances.
 
 By default, the domain-server will point to the metaverse-server
-`https://metaverse.vircadia.com/live` but this can be changed
+`https:host:9400` but this can be changed
 by passing the metaverse URL to the run script:
 
 ```
