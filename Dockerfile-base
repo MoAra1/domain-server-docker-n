@@ -1,0 +1,83 @@
+# build a domain-server using vircadia-builder
+FROM ubuntu:22.04 as domain-server-build
+
+RUN echo UTC >/etc/timezone
+
+# The tag to pull from the Project Athena source repository. (Note defn in next stage)
+ARG REPO=https://github.com/overte-org/overte
+ARG TAG=master
+
+# Tell the libraries not to use the interactive dialogs
+ARG DEBIAN_FRONTEND=noninteractive
+ARG TERM=linux
+
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y git vim libfindbin-libs-perl sudo
+
+RUN mkdir -p /var/lib/overte
+RUN mkdir -p /opt/overte
+
+#    && git clone --branch feature-optSkipSystemdRestart https://github.com/MoAra1/overte-builder \
+# Get the builder
+ADD https://api.github.com/repos/overte-org/overte-builder/git/refs/heads/master overte-builder-git-version.json
+RUN cd /opt/overte \
+    && git clone https://github.com/overte-org/overte-builder.git \
+    && cd overte-builder \
+    && chmod +x overte-builder
+
+# Load the required libraries (the first time just loads packages)
+# ADD https://api.github.com/repos/overte/overte/git/refs/heads/${TAG} vircadia-git-version.json
+RUN cd /opt/overte/overte-builder \
+    && ./overte-builder \
+            --repo=$REPO \
+            --tag=$TAG \
+            --build=domain-server,assignment-client,ice-server \
+            --release-type=production \
+            --destdir /opt/overte \
+            --auto
+
+# Create a list of all the source dependencies needed for later phase
+RUN cd /opt/overte/overte-builder \
+    && ./overte-builder \
+            --repo=$REPO \
+            --tag=$TAG \
+            --destdir /opt/overte \
+            --keep-source \
+            --get-source-deps ubuntu-22.04 \
+            --release-type=production \
+            --auto > /opt/overte/builder-deps.txt
+
+# If using the system Qt, get the dependencies for that for later loading
+# NOTE: this is an attempt to integrate the system Qt. For the moment, require building Qt
+# RUN if [ ! -d /opt/vircadia/qt5-install ] ; then \
+#         cd /opt/vircadia/overte-builder \
+#         && ./overte-builder \
+#             --repo=$REPO \
+#             --tag=$TAG \
+#             --destdir /opt/vircadia \
+#             --keep-source \
+#             --get-system-qt-deps >> /opt/vircadia/builder-deps.txt ; \
+#     fi
+
+# Build the server pieces
+ADD https://api.github.com/repos/overte-org/overte/git/refs/heads/$TAG overte-git-version.json
+RUN cd /opt/overte/overte-builder \
+    && ./overte-builder \
+            --repo=$REPO \
+            --tag=$TAG \
+            --destdir /opt/overte \
+            --keep-source \
+            --build=domain-server,assignment-client,ice-server \
+            --release-type=production \
+            --skip-systemd-restart \
+            --auto
+
+# overte-builder puts the built image into 'install-$TAG'. Move to "install-master" so later code is simplier
+RUN if [ ! -d /opt/overte/install-master ] ; then \
+        mv /opt/overte/overte_20* /opt/overte/install_master ; \
+    fi
+
+COPY files/buildVersion.sh /tmp
+RUN mkdir -p /opt/overte/version \
+    && /tmp/buildVersion.sh /opt/overte/source /opt/overte/version $TAG
